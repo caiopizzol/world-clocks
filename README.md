@@ -1,4 +1,4 @@
-# World Clocks
+<h1><img width="42" height="42" alt="icon" src="https://github.com/user-attachments/assets/41f265a0-423b-45cc-bd79-18cc661819fb"/>&nbsp; World Clocks</h1>
 
 A Chrome extension that replaces your new tab page with a world clock dashboard and interactive map.
 
