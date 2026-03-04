@@ -3,6 +3,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/caiopizzol/world-clocks)](https://github.com/caiopizzol/world-clocks/releases)
 
 A Chrome extension that replaces your new tab page with a world clock dashboard and interactive map.
+<img width="1280" height="720" alt="screenshot of the extension"  src="https://github.com/user-attachments/assets/a9b28ecb-8e53-4944-acfe-f56b5cbf9293" />
 
 ## Features
 
