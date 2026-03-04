@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <!-- Clock face -->
+  <circle cx="64" cy="64" r="38" fill="none" stroke="#fff" stroke-width="3.5" opacity="0.9"/>
+  <!-- Hour marks -->
+  <line x1="64" y1="30" x2="64" y2="35" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+  <line x1="64" y1="93" x2="64" y2="98" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+  <line x1="30" y1="64" x2="35" y2="64" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+  <line x1="93" y1="64" x2="98" y2="64" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+  <!-- Hour hand (10 o'clock-ish) -->
+  <line x1="64" y1="64" x2="52" y2="42" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Minute hand -->
+  <line x1="64" y1="64" x2="80" y2="48" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Center dot -->
+  <circle cx="64" cy="64" r="3" fill="#fff"/>
+  <!-- Globe hint: latitude lines -->
+  <ellipse cx="64" cy="64" rx="38" ry="14" fill="none" stroke="#fff" stroke-width="1" opacity="0.2"/>
+  <ellipse cx="64" cy="64" rx="38" ry="28" fill="none" stroke="#fff" stroke-width="1" opacity="0.15"/>
+</svg>

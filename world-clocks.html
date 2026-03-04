@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Time</title>
+  <link rel="stylesheet" href="leaflet.css" />
+  <script src="leaflet.js"></script>
+  <style>
+    /* ── Theme variables ── */
+    :root {
+      --bg: #0f172a;
+      --sidebar-bg: #1e293b;
+      --sidebar-border: rgba(255,255,255,0.06);
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --text-faint: #475569;
+      --text-strong: #f8fafc;
+      --input-bg: rgba(255,255,255,0.06);
+      --input-border: rgba(255,255,255,0.1);
+      --input-focus: rgba(56,189,248,0.4);
+      --dropdown-bg: rgba(30,41,59,0.97);
+      --dropdown-border: rgba(255,255,255,0.12);
+      --dropdown-shadow: rgba(0,0,0,0.4);
+      --item-hover: rgba(255,255,255,0.03);
+      --item-border: rgba(255,255,255,0.04);
+      --result-hover: rgba(255,255,255,0.06);
+      --scrollbar: rgba(255,255,255,0.08);
+      --remove-hover-color: #f87171;
+      --remove-hover-bg: rgba(248,113,113,0.1);
+      --map-bg: #0f172a;
+      --tile-filter: brightness(1.4) contrast(1.2) saturate(0.3);
+      --label-bg: rgba(15,23,42,0.82);
+      --label-bg-hover: rgba(15,23,42,0.92);
+      --label-border: rgba(56,189,248,0.15);
+      --label-border-hover: rgba(56,189,248,0.35);
+      --label-text: #94a3b8;
+      --label-name: #e2e8f0;
+      --marker-bg: #38bdf8;
+      --marker-border: rgba(255,255,255,0.5);
+      --marker-shadow: rgba(56,189,248,0.4);
+      --attr-bg: rgba(15,23,42,0.5);
+      --attr-text: #334155;
+      --attr-link: #475569;
+      --toggle-bg: rgba(255,255,255,0.06);
+      --toggle-border: rgba(255,255,255,0.1);
+      --toggle-text: #94a3b8;
+      --toggle-hover: rgba(255,255,255,0.1);
+    }
+    :root.light {
+      --bg: #f1f5f9;
+      --sidebar-bg: #ffffff;
+      --sidebar-border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+      --text-faint: #cbd5e1;
+      --text-strong: #0f172a;
+      --input-bg: #f1f5f9;
+      --input-border: #e2e8f0;
+      --input-focus: rgba(3,105,161,0.4);
+      --dropdown-bg: rgba(255,255,255,0.97);
+      --dropdown-border: #e2e8f0;
+      --dropdown-shadow: rgba(0,0,0,0.1);
+      --item-hover: rgba(0,0,0,0.02);
+      --item-border: #f1f5f9;
+      --result-hover: rgba(0,0,0,0.04);
+      --scrollbar: rgba(0,0,0,0.1);
+      --remove-hover-color: #ef4444;
+      --remove-hover-bg: rgba(239,68,68,0.1);
+      --map-bg: #e2e8f0;
+      --tile-filter: brightness(1) contrast(1) saturate(1);
+      --label-bg: rgba(255,255,255,0.92);
+      --label-bg-hover: rgba(255,255,255,0.98);
+      --label-border: rgba(3,105,161,0.2);
+      --label-border-hover: rgba(3,105,161,0.4);
+      --label-text: #64748b;
+      --label-name: #0f172a;
+      --marker-bg: #0284c7;
+      --marker-border: rgba(255,255,255,0.8);
+      --marker-shadow: rgba(2,132,199,0.4);
+      --attr-bg: rgba(255,255,255,0.6);
+      --attr-text: #94a3b8;
+      --attr-link: #64748b;
+      --toggle-bg: #f1f5f9;
+      --toggle-border: #e2e8f0;
+      --toggle-text: #64748b;
+      --toggle-hover: #e2e8f0;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+    }
+
+    /* ── Left sidebar ── */
+    .sidebar {
+      width: 320px;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--sidebar-border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .search-section {
+      padding: 14px;
+      border-bottom: 1px solid var(--sidebar-border);
+      position: relative;
+    }
+    .search-section input {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 8px;
+      padding: 10px 14px 10px 38px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-section input:focus { border-color: var(--input-focus); }
+    .search-section input::placeholder { color: var(--text-dim); }
+    .search-icon {
+      position: absolute;
+      left: 26px; top: 50%; transform: translateY(-50%);
+      color: var(--text-dim); width: 16px; height: 16px; pointer-events: none;
+    }
+    .search-dropdown {
+      position: absolute;
+      top: 100%; left: 14px; right: 14px;
+      background: var(--dropdown-bg);
+      border: 1px solid var(--dropdown-border);
+      border-radius: 10px;
+      max-height: 280px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+      box-shadow: 0 12px 40px var(--dropdown-shadow);
+    }
+    .search-dropdown.visible { display: block; }
+    .search-dropdown::-webkit-scrollbar { width: 6px; }
+    .search-dropdown::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+    .search-result {
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--item-border);
+      transition: background 0.1s;
+    }
+    .search-result:last-child { border-bottom: none; }
+    .search-result:hover, .search-result.active { background: var(--result-hover); }
+    .sr-flag { font-size: 16px; }
+    .sr-name { flex: 1; font-weight: 450; color: var(--text); }
+    .sr-time { font-family: ui-monospace, monospace; font-size: 12px; color: var(--text-muted); }
+    .sr-tz { color: var(--text-dim); font-size: 11px; }
+    .search-empty {
+      padding: 14px;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    /* Clock list */
+    .clocks-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0;
+    }
+    .clocks-list::-webkit-scrollbar { width: 6px; }
+    .clocks-list::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+    .clock-item {
+      display: flex;
+      align-items: center;
+      padding: 14px 16px;
+      gap: 12px;
+      border-bottom: 1px solid var(--item-border);
+      position: relative;
+      transition: background 0.1s;
+    }
+    .clock-item:hover { background: var(--item-hover); }
+    .ci-flag { font-size: 22px; }
+    .ci-info { flex: 1; min-width: 0; }
+    .ci-name { font-size: 14px; font-weight: 500; color: var(--text); }
+    .ci-tz { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+    .ci-time-col { text-align: right; flex-shrink: 0; }
+    .ci-time {
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-strong);
+    }
+    .ci-day { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+    .clock-item .ci-remove-col {
+      flex-shrink: 0;
+      width: 0;
+      overflow: hidden;
+      transition: width 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .clock-item:hover .ci-remove-col { width: 32px; }
+    .ci-remove {
+      width: 24px; height: 24px;
+      background: none; border: none;
+      color: var(--text-faint); cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .ci-remove:hover { color: var(--remove-hover-color); background: var(--remove-hover-bg); }
+
+    /* ── Theme toggle ── */
+    .sidebar-footer {
+      padding: 10px 14px;
+      border-top: 1px solid var(--sidebar-border);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--toggle-bg);
+      border: 1px solid var(--toggle-border);
+      border-radius: 6px;
+      padding: 5px 10px;
+      cursor: pointer;
+      color: var(--toggle-text);
+      font-size: 12px;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+    .theme-toggle:hover { background: var(--toggle-hover); }
+    .theme-toggle svg { width: 14px; height: 14px; }
+
+    /* ── Right: map panel ── */
+    .map-panel {
+      flex: 1;
+      position: relative;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+      background: var(--map-bg);
+    }
+    .leaflet-tile-pane {
+      filter: var(--tile-filter);
+    }
+
+    /* ── Override Leaflet tooltip ── */
+    .leaflet-tooltip.city-tooltip {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .leaflet-tooltip.city-tooltip::before { display: none; }
+
+    .city-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--label-bg);
+      backdrop-filter: blur(6px);
+      border: 1px solid var(--label-border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--label-text);
+      white-space: nowrap;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .city-label:hover {
+      background: var(--label-bg-hover);
+      border-color: var(--label-border-hover);
+    }
+    .city-label .cl-flag { font-size: 13px; }
+    .city-label .cl-name { color: var(--label-name); font-weight: 500; }
+    .city-label .cl-remove {
+      width: 14px; height: 14px;
+      line-height: 14px;
+      text-align: center;
+      border-radius: 50%;
+      font-size: 10px;
+      color: var(--text-faint);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s, color 0.15s, background 0.15s;
+      margin-left: 2px;
+    }
+    .city-label:hover .cl-remove { opacity: 1; }
+    .city-label .cl-remove:hover { color: #fff; background: #ef4444; }
+
+    /* ── Leaflet controls ── */
+    .leaflet-control-attribution {
+      background: var(--attr-bg) !important;
+      color: var(--attr-text) !important;
+      font-size: 9px !important;
+    }
+    .leaflet-control-attribution a { color: var(--attr-link) !important; }
+
+    /* ── Custom marker dot ── */
+    .pulse-marker {
+      width: 8px; height: 8px;
+      background: var(--marker-bg);
+      border-radius: 50%;
+      border: 2px solid var(--marker-border);
+      box-shadow: 0 0 6px var(--marker-shadow);
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="search-section">
+      <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" placeholder="Add city..." id="searchInput">
+      <div class="search-dropdown" id="searchDropdown"></div>
+    </div>
+    <div class="clocks-list" id="clocksList"></div>
+    <div class="sidebar-footer">
+      <button class="theme-toggle" id="themeToggle">
+        <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"></svg>
+        <span id="themeLabel"></span>
+      </button>
+    </div>
+  </div>
+  <div class="map-panel">
+    <div id="map"></div>
+  </div>
+  <script src="world-clocks.js"></script>
+</body>
+</html>

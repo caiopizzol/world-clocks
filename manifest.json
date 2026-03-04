@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "World Clocks",
+  "version": "0.1",
+  "description": "New tab with world clocks and a map",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "chrome_url_overrides": {
+    "newtab": "world-clocks.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["cities.json"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
