@@ -11,6 +11,6 @@
     }
   },
   "files": {
-    "includes": ["world-clocks.js", "manifest.json", "biome.json", "package.json"]
+    "includes": ["*.js", "*.json", ".*.json", "!leaflet.js", "!cities.json"]
   }
 }
