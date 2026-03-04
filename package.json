@@ -4,7 +4,8 @@
   "description": "New tab Chrome extension with world clocks and a map",
   "scripts": {
     "lint": "biome check",
-    "format": "biome check --write"
+    "format": "biome check --write",
+    "package": "rm -f world-clocks.zip && zip -r world-clocks.zip manifest.json world-clocks.html world-clocks.js leaflet.js leaflet.css cities.json icons/"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.5",
