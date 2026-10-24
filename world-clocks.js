@@ -3,11 +3,13 @@ let allCities = [];
 let pinnedCities = [];
 let map = null;
 let markers = [];
+let showUnpinned = false;
 
 const DEFAULT_CITIES = ["London", "São Paulo", "New Delhi", "Denver", "San Francisco", "Kyiv"];
 
 const STORAGE_KEY = "world-clocks-pinned";
 const THEME_KEY = "world-clocks-theme";
+const MAP_VIEW_KEY = "world-clocks-map-view";
 
 const THEME_ICONS = {
   system:
@@ -119,6 +121,32 @@ function removeCity(idx) {
 }
 
 // ── Initialize Leaflet map ──
+function initDisplayOptions() {
+  const bindToggle = (id, key, label, apply) => {
+    const button = document.getElementById(id);
+    let enabled = localStorage.getItem(key) === "true";
+    const update = () => {
+      button.setAttribute("aria-pressed", String(enabled));
+      button.textContent = label;
+      button.title = `${enabled ? "Hide" : "Show"} ${label.toLowerCase()}`;
+      apply(enabled);
+    };
+    update();
+    button.addEventListener("click", () => {
+      enabled = !enabled;
+      localStorage.setItem(key, String(enabled));
+      update();
+    });
+  };
+  bindToggle("showNames", "world-clocks-show-names", "Names", (enabled) => {
+    document.documentElement.classList.toggle("hide-country-names", !enabled);
+  });
+  bindToggle("showUnpinned", "world-clocks-show-unpinned", "Unpinned", (enabled) => {
+    showUnpinned = enabled;
+    if (map) renderMarkers();
+  });
+}
+
 function initCountryLabels(svg) {
   const labels = [...svg.querySelectorAll(".country-names text")]
     .map((element) => ({ element, priority: Number(element.getAttribute("font-size")) }))
@@ -171,7 +199,7 @@ async function initMap() {
     zoom: 2,
     zoomSnap: 0,
     minZoom: 0,
-    maxZoom: 8,
+    maxZoom: 5,
     zoomControl: true,
     attributionControl: true,
     maxBounds: [
@@ -201,6 +229,16 @@ async function initMap() {
 
   initCountryLabels(svg);
 
+  const updateZoomLimit = () => {
+    map.invalidateSize({ pan: false });
+    const size = map.getSize();
+    if (size.x <= 0 || size.y <= 0) return;
+    // The full Web Mercator world is a 256px square at zoom zero.
+    const wholeMapZoom = Math.log2(Math.min(size.x, size.y) / 256);
+    map.setMinZoom(wholeMapZoom);
+  };
+  updateZoomLimit();
+
   // Start with the Americas through Asia in view, matching the reference framing.
   const fitMap = () => {
     map.invalidateSize();
@@ -212,15 +250,78 @@ async function initMap() {
       { padding: [0, 0], animate: false },
     );
   };
-  fitMap();
-  let exploring = false;
+  let restoredView = false;
+  try {
+    const saved = JSON.parse(localStorage.getItem(MAP_VIEW_KEY));
+    if (
+      saved &&
+      Number.isFinite(saved.lat) &&
+      Number.isFinite(saved.lng) &&
+      Number.isFinite(saved.zoom) &&
+      Math.abs(saved.lat) <= 85.0511287798 &&
+      Math.abs(saved.lng) <= 180
+    ) {
+      map.setView([saved.lat, saved.lng], saved.zoom, { animate: false });
+      restoredView = true;
+    }
+  } catch {}
+  if (!restoredView) fitMap();
+  const animateEntrance = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let entrancePending = animateEntrance;
+  if (animateEntrance) {
+    svg.style.opacity = "0";
+  }
+  let exploring = restoredView;
+  map.on("moveend", () => {
+    const center = map.getCenter();
+    localStorage.setItem(
+      MAP_VIEW_KEY,
+      JSON.stringify({
+        lat: center.lat,
+        lng: center.lng,
+        zoom: map.getZoom(),
+      }),
+    );
+  });
+
+  const resetButton = document.createElement("button");
+  resetButton.type = "button";
+  resetButton.className = "map-reset";
+  resetButton.title = "Reset to default view";
+  resetButton.setAttribute("aria-label", "Reset to default view");
+  resetButton.innerHTML =
+    '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 6.5h14M5 17.5h14"/></svg>';
+  L.DomEvent.disableClickPropagation(resetButton);
+  resetButton.addEventListener("click", () => {
+    map.stop();
+    fitMap();
+    exploring = false;
+    localStorage.removeItem(MAP_VIEW_KEY);
+  });
+  map.zoomControl.getContainer().appendChild(resetButton);
+
   map.on("dragstart zoomstart", () => {
     exploring = true;
   });
   new ResizeObserver(() => {
-    if (exploring) map.invalidateSize({ pan: false });
-    else fitMap();
+    updateZoomLimit();
+    if (!exploring && !entrancePending) fitMap();
   }).observe(document.getElementById("map"));
+
+  // Fade in after city markers are ready, without changing the map view.
+  return () => {
+    if (!animateEntrance) return;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        entrancePending = false;
+        svg.style.opacity = "";
+        svg.animate([{ opacity: 0 }, { opacity: 1 }], {
+          duration: 400,
+          easing: "ease-out",
+        });
+      }),
+    );
+  };
 }
 
 // ── Render Leaflet markers ──
@@ -232,7 +333,7 @@ function renderMarkers() {
 
   const pinnedNames = new Set(pinnedCities.map((city) => city.name));
   allCities
-    .filter((city) => !pinnedNames.has(city.name))
+    .filter((city) => showUnpinned && !pinnedNames.has(city.name))
     .forEach((city) => {
       const icon = L.divIcon({
         className: "available-city",
@@ -608,7 +709,8 @@ function initCursorTime() {
 
 async function init() {
   initTheme();
-  await initMap();
+  initDisplayOptions();
+  const playMapEntrance = await initMap();
 
   const resp = await fetch(chrome.runtime.getURL("cities.json"));
   allCities = await resp.json();
@@ -622,6 +724,7 @@ async function init() {
   renderList();
   initSearch();
   initCursorTime();
+  playMapEntrance();
   setInterval(updateTimes, 1000);
 }
 
