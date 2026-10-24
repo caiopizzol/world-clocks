@@ -30,7 +30,8 @@
       --remove-hover-color: #f87171;
       --remove-hover-bg: rgba(248,113,113,0.1);
       --map-bg: #0f172a;
-      --tile-filter: brightness(1.4) contrast(1.2) saturate(0.3);
+      --map-land: #29394d;
+      --map-border: #435268;
       --label-bg: rgba(15,23,42,0.82);
       --label-bg-hover: rgba(15,23,42,0.92);
       --label-border: rgba(56,189,248,0.15);
@@ -70,7 +71,8 @@
       --remove-hover-color: #ef4444;
       --remove-hover-bg: rgba(239,68,68,0.1);
       --map-bg: #e2e8f0;
-      --tile-filter: brightness(1) contrast(1) saturate(1);
+      --map-land: #f8fafc;
+      --map-border: #bac7d5;
       --label-bg: rgba(255,255,255,0.92);
       --label-bg-hover: rgba(255,255,255,0.98);
       --label-border: rgba(3,105,161,0.2);
@@ -250,6 +252,7 @@
     /* ── Right: map panel ── */
     .map-panel {
       flex: 1;
+      min-width: 0;
       position: relative;
     }
     #map {
@@ -257,8 +260,14 @@
       height: 100%;
       background: var(--map-bg);
     }
-    .leaflet-tile-pane {
-      filter: var(--tile-filter);
+    .world-map {
+      color: var(--map-land);
+      /* Fade the SVG boundary without softening country borders or city pins. */
+      mask-image:
+        linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent),
+        linear-gradient(to bottom, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+      mask-composite: intersect;
+      mask-repeat: no-repeat;
     }
 
     /* ── Override Leaflet tooltip ── */
@@ -270,6 +279,20 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
     .leaflet-tooltip.city-tooltip::before { display: none; }
+
+    .leaflet-tooltip.cursor-time-tooltip {
+      background: var(--label-bg-hover);
+      border: 1px solid var(--label-border-hover);
+      border-radius: 8px;
+      padding: 7px 11px;
+      color: var(--text-strong);
+      box-shadow: 0 4px 16px var(--dropdown-shadow);
+      pointer-events: none;
+      text-align: center;
+    }
+    .leaflet-tooltip.cursor-time-tooltip::before { display: none; }
+    .cursor-time-location { color: var(--text-muted); font-size: 11px; }
+    .cursor-time-value { font: 600 13px ui-monospace, monospace; margin-top: 3px; }
 
     .city-label {
       display: flex;
@@ -316,6 +339,36 @@
     .leaflet-control-attribution a { color: var(--attr-link) !important; }
 
     /* ── Custom marker dot ── */
+    .available-city {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .available-city-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      opacity: 0.4;
+      transition: opacity 0.15s, background 0.15s, transform 0.15s;
+    }
+    .available-city:hover .available-city-dot,
+    .available-city:focus .available-city-dot {
+      background: var(--marker-bg);
+      opacity: 1;
+      transform: scale(1.5);
+      box-shadow: 0 0 8px var(--marker-shadow);
+    }
+    .leaflet-bar a {
+      background: var(--sidebar-bg);
+      color: var(--text);
+      border-bottom-color: var(--sidebar-border);
+    }
+    .leaflet-bar a:hover, .leaflet-bar a:focus {
+      background: var(--toggle-hover);
+      color: var(--text-strong);
+    }
     .pulse-marker {
       width: 8px; height: 8px;
       background: var(--marker-bg);
@@ -329,7 +382,7 @@
   <div class="sidebar">
     <div class="search-section">
       <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      <input type="text" placeholder="Add city..." id="searchInput">
+      <input type="text" placeholder="Search by city or country" id="searchInput">
       <div class="search-dropdown" id="searchDropdown"></div>
     </div>
     <div class="clocks-list" id="clocksList"></div>

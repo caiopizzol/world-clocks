@@ -3,17 +3,11 @@ let allCities = [];
 let pinnedCities = [];
 let map = null;
 let markers = [];
-let tileLayer = null;
 
 const DEFAULT_CITIES = ["London", "São Paulo", "New Delhi", "Denver", "San Francisco", "Kyiv"];
 
 const STORAGE_KEY = "world-clocks-pinned";
 const THEME_KEY = "world-clocks-theme";
-
-const TILES = {
-  dark: "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png",
-  light: "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
-};
 
 const THEME_ICONS = {
   system:
@@ -52,7 +46,7 @@ function savePinned() {
 function loadPinned() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (Array.isArray(saved) && saved.length > 0) {
+    if (Array.isArray(saved)) {
       return saved;
     }
   } catch {}
@@ -81,12 +75,6 @@ function applyTheme() {
 
   document.documentElement.classList.toggle("light", resolved === "light");
 
-  // Swap tile layer
-  const url = resolved === "light" ? TILES.light : TILES.dark;
-  if (tileLayer) {
-    tileLayer.setUrl(url);
-  }
-
   // Update toggle button
   const icon = document.getElementById("themeIcon");
   const label = document.getElementById("themeLabel");
@@ -114,6 +102,15 @@ function initTheme() {
 }
 
 // ── Remove a city by index ──
+function pinCity(city) {
+  if (pinnedCities.some((pinned) => pinned.name === city.name)) return;
+  pinnedCities.push(city);
+  sortPinned();
+  renderMarkers();
+  renderList();
+  savePinned();
+}
+
 function removeCity(idx) {
   pinnedCities.splice(idx, 1);
   renderMarkers();
@@ -122,31 +119,108 @@ function removeCity(idx) {
 }
 
 // ── Initialize Leaflet map ──
-function initMap() {
+function initCountryLabels(svg) {
+  const labels = [...svg.querySelectorAll(".country-names text")]
+    .map((element) => ({ element, priority: Number(element.getAttribute("font-size")) }))
+    .sort((a, b) => b.priority - a.priority);
+  let pending = false;
+  const update = () => {
+    pending = false;
+    const scale = svg.getBoundingClientRect().width / 1024;
+    if (!scale) return;
+    // Keep text readable without letting it grow into neighboring countries.
+    for (const { element, priority } of labels) {
+      element.setAttribute("font-size", Math.max(10, Math.min(14, priority * scale)) / scale);
+    }
+    const viewport = map.getContainer().getBoundingClientRect();
+    const measured = labels.map(({ element }) => ({
+      element,
+      box: element.getBoundingClientRect(),
+    }));
+    const occupied = [];
+    for (const { element, box } of measured) {
+      const outside =
+        box.right < viewport.left ||
+        box.left > viewport.right ||
+        box.bottom < viewport.top ||
+        box.top > viewport.bottom;
+      const crowded = occupied.some(
+        (other) =>
+          box.left < other.right + 8 &&
+          box.right > other.left - 8 &&
+          box.top < other.bottom + 6 &&
+          box.bottom > other.top - 6,
+      );
+      const visible = !outside && !crowded;
+      element.style.visibility = visible ? "visible" : "hidden";
+      if (visible) occupied.push(box);
+    }
+  };
+  const schedule = () => {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(update);
+  };
+  map.on("zoomend moveend resize", schedule);
+  schedule();
+}
+
+async function initMap() {
   map = L.map("map", {
     center: [25, 0],
     zoom: 2,
-    minZoom: 2,
-    maxZoom: 2,
-    zoomControl: false,
+    zoomSnap: 0,
+    minZoom: 0,
+    maxZoom: 8,
+    zoomControl: true,
     attributionControl: true,
-    dragging: false,
-    scrollWheelZoom: false,
-    doubleClickZoom: false,
-    touchZoom: false,
-    boxZoom: false,
-    keyboard: false,
+    maxBounds: [
+      [-85.0511287798, -180],
+      [85.0511287798, 180],
+    ],
+    maxBoundsViscosity: 0.8,
   });
 
-  const resolved = resolveTheme(getThemePref());
-  const url = resolved === "light" ? TILES.light : TILES.dark;
+  const response = await fetch("world-map.svg");
+  if (!response.ok) throw new Error("Could not load the bundled world map");
+  const svg = new DOMParser().parseFromString(
+    await response.text(),
+    "image/svg+xml",
+  ).documentElement;
+  L.svgOverlay(
+    svg,
+    [
+      [-85.0511287798, -180],
+      [85.0511287798, 180],
+    ],
+    {
+      className: "world-map",
+      attribution: '<a href="https://www.naturalearthdata.com/">Natural Earth</a>',
+    },
+  ).addTo(map);
 
-  tileLayer = L.tileLayer(url, {
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-    subdomains: "abcd",
-    maxZoom: 19,
-  }).addTo(map);
+  initCountryLabels(svg);
+
+  // Start with the Americas through Asia in view, matching the reference framing.
+  const fitMap = () => {
+    map.invalidateSize();
+    map.fitBounds(
+      [
+        [-45, -180],
+        [83, 180],
+      ],
+      { padding: [0, 0], animate: false },
+    );
+  };
+  fitMap();
+  let exploring = false;
+  map.on("dragstart zoomstart", () => {
+    exploring = true;
+  });
+  new ResizeObserver(() => {
+    if (exploring) map.invalidateSize({ pan: false });
+    else fitMap();
+  }).observe(document.getElementById("map"));
 }
 
 // ── Render Leaflet markers ──
@@ -156,6 +230,35 @@ function renderMarkers() {
   });
   markers = [];
 
+  const pinnedNames = new Set(pinnedCities.map((city) => city.name));
+  allCities
+    .filter((city) => !pinnedNames.has(city.name))
+    .forEach((city) => {
+      const icon = L.divIcon({
+        className: "available-city",
+        html: '<span class="available-city-dot"></span>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      });
+      const marker = L.marker([city.lat, city.lng], {
+        icon,
+        title: `Pin ${city.name}`,
+        alt: `Pin ${city.name}`,
+        riseOnHover: true,
+        zIndexOffset: -1000,
+      }).addTo(map);
+      const label = document.createElement("div");
+      label.className = "city-label";
+      label.textContent = `${ccToFlag(city.cc)} ${city.name}`;
+      marker.bindTooltip(label, {
+        direction: "top",
+        offset: [0, -8],
+        className: "city-tooltip",
+      });
+      marker.on("click", () => pinCity(city));
+      markers.push(marker);
+    });
+
   pinnedCities.forEach((city, i) => {
     const icon = L.divIcon({
       className: "",
@@ -164,7 +267,12 @@ function renderMarkers() {
       iconAnchor: [5, 5],
     });
 
-    const marker = L.marker([city.lat, city.lng], { icon }).addTo(map);
+    const marker = L.marker([city.lat, city.lng], {
+      icon,
+      title: `Unpin ${city.name}`,
+      alt: `Unpin ${city.name}`,
+    }).addTo(map);
+    marker.on("click", () => removeCity(i));
 
     const tooltipContent =
       '<div class="city-label">' +
@@ -280,17 +388,17 @@ function updateTimes() {
 
 // ── Search ──
 function initSearch() {
+  const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
+  const countryNames = new Map(
+    allCities.map((city) => [city.cc, regionNames.of(city.cc.toUpperCase()).toLowerCase()]),
+  );
   const input = document.getElementById("searchInput");
   const dropdown = document.getElementById("searchDropdown");
   let results = [];
   let selectedIdx = -1;
 
   function addCity(city) {
-    pinnedCities.push(city);
-    sortPinned();
-    renderMarkers();
-    renderList();
-    savePinned();
+    pinCity(city);
     input.value = "";
     dropdown.classList.remove("visible");
     results = [];
@@ -316,13 +424,15 @@ function initSearch() {
     }
 
     const pinnedNames = new Set(pinnedCities.map((c) => c.name));
+    const matchRank = (city) => {
+      if (countryNames.get(city.cc).includes(q)) return 0;
+      if (city.name.toLowerCase().includes(q)) return 1;
+      if (city.tz.toLowerCase().includes(q)) return 2;
+      return 3;
+    };
     results = allCities
-      .filter(
-        (c) =>
-          !pinnedNames.has(c.name) &&
-          (c.name.toLowerCase().includes(q) || c.tz.toLowerCase().includes(q)),
-      )
-      .slice(0, 8);
+      .filter((city) => matchRank(city) < 3)
+      .sort((a, b) => matchRank(a) - matchRank(b) || a.name.localeCompare(b.name));
 
     if (results.length === 0) {
       dropdown.innerHTML = '<div class="search-empty">No cities found</div>';
@@ -353,7 +463,7 @@ function initSearch() {
           time +
           "</span>" +
           '<span class="sr-tz">' +
-          c.tz.split("/").pop().replace(/_/g, " ") +
+          (pinnedNames.has(c.name) ? "Pinned" : c.tz.split("/").pop().replace(/_/g, " ")) +
           "</span>" +
           "</div>"
         );
@@ -414,9 +524,91 @@ function initSearch() {
 }
 
 // ── Init ──
+// Use the nearest catalogued city's timezone, including its daylight-saving rules.
+function initCursorTime() {
+  const radians = Math.PI / 180;
+  const locations = allCities.map((city) => {
+    const lat = city.lat * radians;
+    const lng = city.lng * radians;
+    return {
+      city,
+      x: Math.cos(lat) * Math.cos(lng),
+      y: Math.cos(lat) * Math.sin(lng),
+      z: Math.sin(lat),
+    };
+  });
+  const content = document.createElement("div");
+  const location = document.createElement("div");
+  const time = document.createElement("div");
+  location.className = "cursor-time-location";
+  time.className = "cursor-time-value";
+  content.append(location, time);
+  const tooltip = L.tooltip({
+    direction: "bottom",
+    offset: [0, 18],
+    className: "cursor-time-tooltip",
+    opacity: 1,
+    interactive: false,
+  }).setContent(content);
+  let currentCity = null;
+  let formatter = null;
+
+  const update = () => {
+    if (formatter) time.textContent = formatter.format(new Date());
+  };
+  const hide = () => {
+    tooltip.remove();
+    currentCity = null;
+    formatter = null;
+  };
+  map.getContainer().addEventListener("mousemove", (event) => {
+    if (map.dragging.moving() || event.target.closest(".leaflet-control")) {
+      hide();
+      return;
+    }
+    const point = map.mouseEventToLatLng(event);
+    if (Math.abs(point.lng) > 180 || Math.abs(point.lat) > 85.0511287798) {
+      hide();
+      return;
+    }
+    const lat = point.lat * radians;
+    const lng = point.lng * radians;
+    const x = Math.cos(lat) * Math.cos(lng);
+    const y = Math.cos(lat) * Math.sin(lng);
+    const z = Math.sin(lat);
+    let nearest = null;
+    let best = -Infinity;
+    for (const entry of locations) {
+      const score = x * entry.x + y * entry.y + z * entry.z;
+      if (score > best) {
+        best = score;
+        nearest = entry.city;
+      }
+    }
+    if (!nearest) return;
+    if (nearest !== currentCity) {
+      currentCity = nearest;
+      location.textContent = `Near ${nearest.name}`;
+      formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: nearest.tz,
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+        timeZoneName: "short",
+      });
+      update();
+    }
+    tooltip.setLatLng(point);
+    if (!map.hasLayer(tooltip)) tooltip.addTo(map);
+  });
+  map.getContainer().addEventListener("mouseleave", hide);
+  map.on("movestart", hide);
+  setInterval(update, 1000);
+}
+
 async function init() {
-  initMap();
   initTheme();
+  await initMap();
 
   const resp = await fetch(chrome.runtime.getURL("cities.json"));
   allCities = await resp.json();
@@ -429,6 +621,7 @@ async function init() {
   renderMarkers();
   renderList();
   initSearch();
+  initCursorTime();
   setInterval(updateTimes, 1000);
 }
 

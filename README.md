@@ -7,7 +7,7 @@ A Chrome extension that replaces your new tab page with a world clock dashboard 
 
 ## Features
 
-- **World map** with pinned city markers (powered by Leaflet + CARTO tiles)
+- **World map** with pinned city markers (bundled SVG with Leaflet; works offline, no API key)
 - **Sidebar** showing live clocks for each pinned city
 - **Search** to add any city from 400+ worldwide
 - **Dark / Light / System** theme toggle
@@ -23,9 +23,18 @@ A Chrome extension that replaces your new tab page with a world clock dashboard 
 
 ## Usage
 
-- Type in the search bar to find and add cities
+- Drag to pan; scroll, pinch, or use the +/- controls to zoom.
+- Hover over a faint city dot to see its name; click it to pin the city.
+- Click a glowing pinned dot to unpin its city.
+- Search by city or country; country matches appear first and pinned cities are marked.
+- Move the cursor over the map to see the nearest listed city's local time.
+- Country names fade into the map; crowded labels hide when zoomed out.
 - Hover over a city in the sidebar or on the map to reveal the remove button
 - Click the theme toggle in the bottom-right of the sidebar to switch themes
+
+## Map data
+
+`world-map.svg` uses public-domain [Natural Earth](https://www.naturalearthdata.com/) 1:110m country boundaries (v5.1.2), projected to Web Mercator to align with city pins. The map is included in the extension; no external tiles are requested.
 
 ## Authors
 
