@@ -10,6 +10,7 @@ const DEFAULT_CITIES = ["London", "São Paulo", "New Delhi", "Denver", "San Fran
 const STORAGE_KEY = "world-clocks-pinned";
 const THEME_KEY = "world-clocks-theme";
 const MAP_VIEW_KEY = "world-clocks-map-view";
+const EARTH_KEY = "world-clocks-earth-view";
 
 const THEME_ICONS = {
   system:
@@ -92,10 +93,24 @@ function cycleTheme() {
   applyTheme();
 }
 
+function applyEarthView() {
+  const enabled = localStorage.getItem(EARTH_KEY) === "true";
+  document.documentElement.classList.toggle("earth-view", enabled);
+  const button = document.getElementById("earthToggle");
+  button.setAttribute("aria-pressed", String(enabled));
+  button.title = enabled ? "Show illustrated map" : "Show satellite map";
+  button.setAttribute("aria-label", button.title);
+}
+
 function initTheme() {
   applyTheme();
 
   document.getElementById("themeToggle").addEventListener("click", cycleTheme);
+  applyEarthView();
+  document.getElementById("earthToggle").addEventListener("click", () => {
+    localStorage.setItem(EARTH_KEY, String(localStorage.getItem(EARTH_KEY) !== "true"));
+    applyEarthView();
+  });
 
   // React to system theme changes when in 'system' mode
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
@@ -215,6 +230,20 @@ async function initMap() {
     await response.text(),
     "image/svg+xml",
   ).documentElement;
+  // Keep the imagery in the SVG so its projection, feathering and fade match exactly.
+  svg.querySelector("g").classList.add("country-shapes");
+  const satellite = document.createElementNS("http://www.w3.org/2000/svg", "image");
+  satellite.setAttribute("class", "satellite-image");
+  satellite.setAttribute("width", "1024");
+  satellite.setAttribute("height", "1024");
+  satellite.setAttribute("href", "world-map-satellite.jpg");
+  satellite.setAttribute("preserveAspectRatio", "none");
+  svg.insertBefore(satellite, svg.querySelector("g"));
+  if (localStorage.getItem(EARTH_KEY) === "true") {
+    const preload = new Image();
+    preload.src = "world-map-satellite.jpg";
+    await preload.decode();
+  }
   L.svgOverlay(
     svg,
     [
@@ -223,7 +252,8 @@ async function initMap() {
     ],
     {
       className: "world-map",
-      attribution: '<a href="https://www.naturalearthdata.com/">Natural Earth</a>',
+      attribution:
+        '<a href="https://www.naturalearthdata.com/">Natural Earth</a> | Imagery: <a href="https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/">NASA Blue Marble</a>',
     },
   ).addTo(map);
 
@@ -266,11 +296,6 @@ async function initMap() {
     }
   } catch {}
   if (!restoredView) fitMap();
-  const animateEntrance = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let entrancePending = animateEntrance;
-  if (animateEntrance) {
-    svg.style.opacity = "0";
-  }
   let exploring = restoredView;
   map.on("moveend", () => {
     const center = map.getCenter();
@@ -305,23 +330,8 @@ async function initMap() {
   });
   new ResizeObserver(() => {
     updateZoomLimit();
-    if (!exploring && !entrancePending) fitMap();
+    if (!exploring) fitMap();
   }).observe(document.getElementById("map"));
-
-  // Fade in after city markers are ready, without changing the map view.
-  return () => {
-    if (!animateEntrance) return;
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        entrancePending = false;
-        svg.style.opacity = "";
-        svg.animate([{ opacity: 0 }, { opacity: 1 }], {
-          duration: 400,
-          easing: "ease-out",
-        });
-      }),
-    );
-  };
 }
 
 // ── Render Leaflet markers ──
@@ -710,7 +720,7 @@ function initCursorTime() {
 async function init() {
   initTheme();
   initDisplayOptions();
-  const playMapEntrance = await initMap();
+  await initMap();
 
   const resp = await fetch(chrome.runtime.getURL("cities.json"));
   allCities = await resp.json();
@@ -724,7 +734,6 @@ async function init() {
   renderList();
   initSearch();
   initCursorTime();
-  playMapEntrance();
   setInterval(updateTimes, 1000);
 }
 

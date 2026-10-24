@@ -203,7 +203,7 @@
 <text x="292.56" y="434.09" font-size="5">The Bahamas</text>
 <text x="344.92" y="683.96" font-size="4">Falkland Islands</text>
 <text x="539.53" y="289.49" font-size="6">Norway</text>
-<text x="400.11" y="188.87" font-size="6">Greenland</text>
+<text class="ice-country-label" x="400.11" y="188.87" font-size="6">Greenland</text>
 <text x="708.61" y="673.66" font-size="3.5">French Southern and Antarctic Lands</text>
 <text x="869.99" y="537.14" font-size="4">East Timor</text>
 <text x="579.32" y="600.57" font-size="7">South Africa</text>
@@ -340,7 +340,7 @@
 <text x="340.92" y="575.18" font-size="5">Paraguay</text>
 <text x="642.49" y="467.87" font-size="6">Yemen</text>
 <text x="639.15" y="442.25" font-size="7">Saudi Arabia</text>
-<text x="614.07" y="906.50" font-size="5">Antarctica</text>
+<text class="ice-country-label" x="614.07" y="906.50" font-size="5">Antarctica</text>
 <text x="607.84" y="404.85" font-size="3.5">Turkish Republic of Northern Cyprus</text>
 <text x="606.11" y="405.90" font-size="4">Cyprus</text>
 <text x="491.56" y="417.01" font-size="6">Morocco</text>
