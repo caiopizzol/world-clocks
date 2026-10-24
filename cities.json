@@ -2450,6 +2450,13 @@
     "lng": 66.9597
   },
   {
+    "name": "San Francisco",
+    "tz": "America/Los_Angeles",
+    "cc": "us",
+    "lat": 37.7749,
+    "lng": -122.4194
+  },
+  {
     "name": "San Juan",
     "tz": "America/Argentina/San_Juan",
     "cc": "ar",

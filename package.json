@@ -5,7 +5,7 @@
   "scripts": {
     "lint": "biome check",
     "format": "biome check --write",
-    "package": "rm -f world-clocks.zip && zip -r world-clocks.zip manifest.json world-clocks.html world-clocks.js leaflet.js leaflet.css cities.json icons/"
+    "package": "rm -f world-clocks.zip && zip -r world-clocks.zip manifest.json world-clocks.html world-clocks.js world-map.svg world-map-satellite.jpg leaflet.js leaflet.css cities.json icons/"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.5",

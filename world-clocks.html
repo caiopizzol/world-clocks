@@ -30,7 +30,8 @@
       --remove-hover-color: #f87171;
       --remove-hover-bg: rgba(248,113,113,0.1);
       --map-bg: #0f172a;
-      --tile-filter: brightness(1.4) contrast(1.2) saturate(0.3);
+      --map-land: #29394d;
+      --map-border: #435268;
       --label-bg: rgba(15,23,42,0.82);
       --label-bg-hover: rgba(15,23,42,0.92);
       --label-border: rgba(56,189,248,0.15);
@@ -70,7 +71,8 @@
       --remove-hover-color: #ef4444;
       --remove-hover-bg: rgba(239,68,68,0.1);
       --map-bg: #e2e8f0;
-      --tile-filter: brightness(1) contrast(1) saturate(1);
+      --map-land: #f8fafc;
+      --map-border: #bac7d5;
       --label-bg: rgba(255,255,255,0.92);
       --label-bg-hover: rgba(255,255,255,0.98);
       --label-border: rgba(3,105,161,0.2);
@@ -227,9 +229,44 @@
       padding: 10px 14px;
       border-top: 1px solid var(--sidebar-border);
       display: flex;
-      align-items: center;
-      justify-content: flex-end;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 6px;
     }
+    .display-options-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 5px;
+    }
+    .display-options-label {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+    .display-options {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .display-option {
+      background: var(--toggle-bg);
+      border: 1px solid var(--toggle-border);
+      border-radius: 6px;
+      padding: 5px 7px;
+      color: var(--toggle-text);
+      font-family: inherit;
+      font-size: 12px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .display-option, .theme-toggle {
+      height: 28px;
+      line-height: 16px;
+      font-weight: 400;
+    }
+    .display-option:hover { background: var(--toggle-hover); }
+    .display-option:focus-visible { outline: 2px solid var(--marker-bg); outline-offset: 2px; }
+    .hide-country-names .country-names { opacity: 0; }
     .theme-toggle {
       display: flex;
       align-items: center;
@@ -247,9 +284,21 @@
     .theme-toggle:hover { background: var(--toggle-hover); }
     .theme-toggle svg { width: 14px; height: 14px; }
 
+    .earth-toggle { padding: 5px 8px; justify-content: center; }
+    .earth-toggle:focus-visible { outline: 2px solid var(--marker-bg); outline-offset: 2px; }
+    .satellite-image { display: none; }
+    :root.earth-view { --map-bg: #020514; }
+    .earth-view .satellite-image { display: block; }
+    .earth-view .country-shapes { fill: none; stroke: rgba(255,255,255,0.16); }
+    .earth-view .country-names { fill: #f1f5f9; opacity: 0.85; }
+    .earth-view .ice-country-label { fill: #000; }
+    .earth-view.hide-country-names .country-names { opacity: 0; }
+    .earth-view .available-city-dot { background: #cbd5e1; opacity: 0.55; }
+
     /* ── Right: map panel ── */
     .map-panel {
       flex: 1;
+      min-width: 0;
       position: relative;
     }
     #map {
@@ -257,8 +306,14 @@
       height: 100%;
       background: var(--map-bg);
     }
-    .leaflet-tile-pane {
-      filter: var(--tile-filter);
+    .world-map {
+      color: var(--map-land);
+      /* Fade the SVG boundary without softening country borders or city pins. */
+      mask-image:
+        linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent),
+        linear-gradient(to bottom, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+      mask-composite: intersect;
+      mask-repeat: no-repeat;
     }
 
     /* ── Override Leaflet tooltip ── */
@@ -270,6 +325,20 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
     .leaflet-tooltip.city-tooltip::before { display: none; }
+
+    .leaflet-tooltip.cursor-time-tooltip {
+      background: var(--label-bg-hover);
+      border: 1px solid var(--label-border-hover);
+      border-radius: 8px;
+      padding: 7px 11px;
+      color: var(--text-strong);
+      box-shadow: 0 4px 16px var(--dropdown-shadow);
+      pointer-events: none;
+      text-align: center;
+    }
+    .leaflet-tooltip.cursor-time-tooltip::before { display: none; }
+    .cursor-time-location { color: var(--text-muted); font-size: 11px; }
+    .cursor-time-value { font: 600 13px ui-monospace, monospace; margin-top: 3px; }
 
     .city-label {
       display: flex;
@@ -316,6 +385,54 @@
     .leaflet-control-attribution a { color: var(--attr-link) !important; }
 
     /* ── Custom marker dot ── */
+    .available-city {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .available-city-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      opacity: 0.4;
+      transition: opacity 0.15s, background 0.15s, transform 0.15s;
+    }
+    .available-city:hover .available-city-dot,
+    .available-city:focus .available-city-dot {
+      background: var(--marker-bg);
+      opacity: 1;
+      transform: scale(1.5);
+      box-shadow: 0 0 8px var(--marker-shadow);
+    }
+    .leaflet-bar .map-reset {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      border: 0;
+      border-top: 1px solid var(--sidebar-border);
+      border-radius: 0 0 4px 4px;
+      background: var(--sidebar-bg);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .leaflet-touch .leaflet-bar .map-reset { width: 30px; height: 30px; }
+    .map-reset svg { width: 18px; height: 18px; }
+    .leaflet-bar .map-reset:hover { background: var(--toggle-hover); }
+    .map-reset:focus-visible { outline: 2px solid var(--marker-bg); outline-offset: -2px; }
+    .leaflet-bar a {
+      background: var(--sidebar-bg);
+      color: var(--text);
+      border-bottom-color: var(--sidebar-border);
+    }
+    .leaflet-bar a:hover, .leaflet-bar a:focus {
+      background: var(--toggle-hover);
+      color: var(--text-strong);
+    }
     .pulse-marker {
       width: 8px; height: 8px;
       background: var(--marker-bg);
@@ -329,15 +446,31 @@
   <div class="sidebar">
     <div class="search-section">
       <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      <input type="text" placeholder="Add city..." id="searchInput">
+      <input type="text" placeholder="Search by city or country" id="searchInput">
       <div class="search-dropdown" id="searchDropdown"></div>
     </div>
     <div class="clocks-list" id="clocksList"></div>
     <div class="sidebar-footer">
-      <button class="theme-toggle" id="themeToggle">
-        <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"></svg>
-        <span id="themeLabel"></span>
-      </button>
+      <div class="display-options-group" role="group" aria-labelledby="displayOptionsLabel">
+        <span class="display-options-label" id="displayOptionsLabel">Show</span>
+        <div class="display-options">
+        <button type="button" class="display-option" id="showNames" aria-pressed="false" title="Show country names on the map">Names</button>
+        <button type="button" class="display-option" id="showUnpinned" aria-pressed="false" title="Show unpinned city dots on the map">Unpinned</button>
+        </div>
+      </div>
+      <div class="display-options-group" role="group" aria-labelledby="themeOptionsLabel">
+        <span class="display-options-label" id="themeOptionsLabel">Theme</span>
+        <div class="display-options">
+          <button class="theme-toggle" id="themeToggle">
+            <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"></svg>
+            <span id="themeLabel"></span>
+          </button>
+          <button type="button" class="theme-toggle earth-toggle" id="earthToggle" aria-pressed="false" aria-label="Show satellite map" title="Show satellite map">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 6.5h14M5 17.5h14"/></svg>
+          <span>Earth</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
   <div class="map-panel">

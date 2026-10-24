@@ -7,7 +7,7 @@ A Chrome extension that replaces your new tab page with a world clock dashboard 
 
 ## Features
 
-- **World map** with pinned city markers (powered by Leaflet + CARTO tiles)
+- **World map** with pinned city markers (bundled SVG with Leaflet; works offline, no API key)
 - **Sidebar** showing live clocks for each pinned city
 - **Search** to add any city from 400+ worldwide
 - **Dark / Light / System** theme toggle
@@ -23,9 +23,21 @@ A Chrome extension that replaces your new tab page with a world clock dashboard 
 
 ## Usage
 
-- Type in the search bar to find and add cities
+- Drag to pan; scroll, pinch, or use the +/- controls to zoom.
+- Hover over a faint city dot to see its name; click it to pin the city.
+- Click a glowing pinned dot to unpin its city.
+- Search by city or country; country matches appear first and pinned cities are marked.
+- Move the cursor over the map to see the nearest listed city's local time.
+- Country names fade into the map; crowded labels hide when zoomed out.
 - Hover over a city in the sidebar or on the map to reveal the remove button
-- Click the theme toggle in the bottom-right of the sidebar to switch themes
+- Click the theme toggle in the bottom-right of the sidebar to switch themes.
+- Use the globe beside the theme button to toggle satellite imagery independently; the choice persists across refreshes.
+
+## Map data
+
+`world-map.svg` uses public-domain [Natural Earth](https://www.naturalearthdata.com/) 1:110m country boundaries (v5.1.2), projected to Web Mercator to align with city pins. The map is included in the extension; no external tiles are requested.
+
+The satellite view bundles NASA's [Blue Marble: Next Generation with Topography](https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-topography/) July 2004 composite, credited to Reto Stoeckli / NASA Earth Observatory. It is a static satellite composite, not live imagery. The [5400 x 2700 source](https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-topography/july/world.topo.200407.3x5400x2700.jpg) was reprojected from equirectangular to Web Mercator (latitude limits +/-85.0511287798), then stored as a 4096 x 4096 JPEG. It requires no API key or network connection at runtime.
 
 ## Authors
 
